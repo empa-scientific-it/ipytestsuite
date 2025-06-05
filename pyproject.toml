@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "A Python package for running `pytest` Jupyter notebooks, geared towards Python tutorials"
 readme = "README.md"
 authors = [
-    { name = "Edoardo Baldi", email = "edoardob90@gmail.com" }
+    { name = "Edoardo Baldi", email = "edoardo.baldi@empa.ch" },
+    { name = "Aliaksandr Yakutovich", email = "aliaksandr.yakutovich@empa.ch" },
+    { name = "Simone Baffelli", email = "simone.baffelli@empa.ch" },
+    { name = "Despina Adamopoulou", email = "despina.adamopoulou@empa.ch" },
+    { name = "Pascal Su", email = "pascal.su@empa.ch" },
 ]
 requires-python = ">=3.13"
 dependencies = [
@@ -16,9 +20,24 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "tenacity>=9.1.2",
 ]
+keywords = ["jupyter", "pytest", "testing", "education", "tutorial"]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: Jupyter",
+    "Topic :: Education :: Testing",
+    "Topic :: Software Development :: Testing",
+]
 
-[project.scripts]
-ipytestsuite = "ipytestsuite:main"
+[project.urls]
+Homepage = "https://github.com/empa-scientific-it/ipytestsuite"
+Repository = "https://github.com/empa-scientific-it/ipytestsuite"
+Issues = "https://github.com/empa-scientific-it/ipytestsuite/issues"
 
 [build-system]
 requires = ["hatchling"]
