@@ -1,0 +1,17 @@
+[project]
+name = "ipytestsuite"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Edoardo Baldi", email = "edoardob90@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+ipytestsuite = "ipytestsuite:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
