@@ -1,7 +1,7 @@
 [project]
 name = "ipytestsuite"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Python package for running `pytest` Jupyter notebooks, geared towards Python tutorials"
 readme = "README.md"
 authors = [
     { name = "Edoardo Baldi", email = "edoardob90@gmail.com" }
