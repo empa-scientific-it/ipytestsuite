@@ -59,14 +59,19 @@ OPENAI_LANGUAGE=English
 
 ### Test File Structure
 
-The package expects test files in this structure:
+The package expects test files following the pattern `test_<module_name>.py`. The test directory location can be configured using multiple methods:
 
 ```
 your_project/
     notebook.ipynb
-    tutorial/tests/
-       test_your_module.py  # Contains your tests
+    tests/                    # Default location (or custom path)
+       test_your_module.py    # Contains your tests
 ```
+
+**Test Directory Configuration (in priority order):**
+1. **Command-line argument**: `%%ipytest --path custom/tests`
+2. **Environment variable**: `IPYTEST_PATH=path/to/tests`  
+3. **Default**: `tests/` directory relative to current working directory
 
 Test functions should be named `test_function_name` and reference functions should be named `reference_function_name`.
 
@@ -86,7 +91,7 @@ def solution_factorial(n):
 ### Debug Mode
 
 ```python
-%%ipytest debug
+%%ipytest --debug
 def solution_buggy_function(x):
     return x / 0  # This will show debug info
 ```
@@ -94,7 +99,7 @@ def solution_buggy_function(x):
 ### Async Testing
 
 ```python
-%%ipytest async
+%%ipytest --async
 def solution_slow_function():
     import time
     time.sleep(1)
@@ -109,14 +114,52 @@ def solution_my_function():
     return 42
 ```
 
+### Custom Test Directory
+
+```python
+%%ipytest --path tutorial/tests
+def solution_custom_path():
+    return "tests from custom directory"
+```
+
+### Combined Options
+
+```python
+%%ipytest my_module --path custom/tests --debug --async
+def solution_complex():
+    return "all options combined"
+```
+
 ## API Reference
 
 ### Magic Commands
 
-- `%%ipytest`: Run tests for solution functions in the cell
-- `%%ipytest debug`: Enable debug output showing detailed test information
-- `%%ipytest async`: Run tests in background thread
-- `%%ipytest module_name`: Use specific test module instead of auto-detection
+The `%%ipytest` cell magic supports flexible argument parsing using CLI-style options:
+
+**Basic Usage:**
+- `%%ipytest`: Run tests with auto-detection (uses `__NOTEBOOK_FILE__` or requires explicit module name)
+
+**Arguments:**
+- `%%ipytest [module_name]`: Optional positional argument specifying the test module name
+
+**Options:**
+- `-p, --path PATH`: Specify custom test directory path
+- `-d, --debug`: Enable debug mode with detailed test information  
+- `--async`: Run tests asynchronously in background thread
+
+**Examples:**
+```python
+%%ipytest                           # Auto-detect module, default settings
+%%ipytest my_module                 # Specific module, default settings
+%%ipytest --debug                   # Auto-detect module, debug enabled
+%%ipytest --path custom/tests       # Auto-detect module, custom path
+%%ipytest my_module --debug --async # All options combined
+```
+
+**Path Resolution Priority:**
+1. `--path` command-line argument
+2. `IPYTEST_PATH` environment variable
+3. Default: `tests/` relative to current working directory
 
 ### Functions
 
