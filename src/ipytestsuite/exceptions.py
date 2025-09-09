@@ -22,6 +22,16 @@ class TestModuleNotFoundError(Exception):
         super().__init__("Test module is not defined")
 
 
+class NotebookContextMissingError(Exception):
+    """Custom exception raised when the notebook context variable is missing"""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Notebook context not found. The JupyterLab extension 'nbname' may not be loaded, "
+            "or you need to provide the module name explicitly in the %%ipytest line."
+        )
+
+
 class PytestInternalError(Exception):
     """Custom exception raised when the test module cannot be found"""
 

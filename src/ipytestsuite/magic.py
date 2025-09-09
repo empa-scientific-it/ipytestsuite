@@ -1,5 +1,6 @@
 """A module to define the `%%ipytest` cell magic"""
 
+import argparse
 import ast
 import dataclasses
 import inspect
@@ -22,9 +23,9 @@ from .ast_parser import AstParser
 from .exceptions import (
     FunctionNotFoundError,
     InstanceNotFoundError,
+    NotebookContextMissingError,
     OpenAIWrapperError,
     PytestInternalError,
-    TestModuleNotFoundError,
 )
 from .helpers import (
     AFunction,
@@ -111,15 +112,21 @@ def run_pytest_in_background(
     test_queue.put(run_pytest_for_function(module_file, function))
 
 
-def get_module_name(line: str, globals_dict: dict) -> str | None:
+def get_module_name(line: str, globals_dict: dict) -> str:
     """Fetch the test module name"""
     # Manual override from %%ipytest line
     if line.strip():
-        return line.strip().removesuffix(".py")
+        filename = line.strip().removesuffix(".py")
+    else:
+        # By default, look for the variable __NOTEBOOK_FILE__
+        notebook_file = globals_dict.get("__NOTEBOOK_FILE__")
 
-    # By default, look for the variable __NOTEBOOK_FILE__
-    notebook_file = str(globals_dict.get("__NOTEBOOK_FILE__"))
-    return notebook_file.removesuffix(".py") if notebook_file else None
+        if notebook_file is None:
+            raise NotebookContextMissingError
+
+        filename = str(notebook_file).removesuffix(".ipynb")
+
+    return pathlib.Path(filename).stem
 
 
 @magics_class
@@ -139,6 +146,55 @@ class TestMagic(Magics):
         )
         self._orig_traceback = self.shell._showtraceback  # type: ignore
         # This is monkey-patching suppress printing any exception or traceback
+
+    def parse_magic_args(self, line: str) -> tuple[str, pathlib.Path, bool, bool]:
+        """Parse the magic arguments and return the module name and file path."""
+        parser = argparse.ArgumentParser(prog="%%ipytest", add_help=False)
+        parser.add_argument("module", nargs="?", default=None, help="Module name")
+        parser.add_argument("-p", "--path", help="Path to test directory")
+        parser.add_argument(
+            "--async",
+            action="store_true",
+            dest="is_async",
+            default=False,
+            help="Run tests asynchronously",
+        )
+        parser.add_argument(
+            "-d",
+            "--debug",
+            action="store_true",
+            dest="is_debug",
+            default=False,
+            help="Enable debug mode",
+        )
+
+        try:
+            args, _ = parser.parse_known_args(line.strip().split())
+        except (SystemExit, argparse.ArgumentError):
+            raise
+
+        # Module name is either passed as argument (override) or inferred from __NOTEBOOK_FILE__
+        if (module_name := args.module) is None:
+            # Look for the variable __NOTEBOOK_FILE__ injected by JupyterLab extension
+            notebook_file = self.shell.user_global_ns.get("__NOTEBOOK_FILE__")
+
+            if notebook_file is None:
+                raise NotebookContextMissingError
+
+            module_name = str(notebook_file).removesuffix(".ipynb")
+
+        # Test path resolution:
+        # 1. Environment variable IPYTEST_PATH
+        # 2. Magic line command-line argument "--path" or "-p"
+        # 3. Default to Path.cwd() / "tests"
+        if os.environ.get("IPYTEST_PATH"):
+            test_path = pathlib.Path(os.environ["IPYTEST_PATH"])
+        elif args.path:
+            test_path = pathlib.Path(args.path)
+        else:
+            test_path = pathlib.Path.cwd() / "tests"
+
+        return module_name, test_path, args.is_debug, args.is_async
 
     def extract_functions_to_test(self) -> list[AFunction]:
         """Retrieve the functions names and implementations defined in the current cell"""
@@ -246,45 +302,30 @@ class TestMagic(Magics):
 
         # Store the cell content
         self.cell = cell
-        line_contents = set(line.split())
 
-        # Debug mode?
-        debug = "debug" in line_contents
-        if debug:
-            line_contents.remove("debug")
+        # Parse arguments
+        module_name, test_path, is_debug, is_async = self.parse_magic_args(line)
+
+        # Store module_name and module_file
+        self.module_name = module_name
+        module_file = test_path / f"test_{module_name}.py"
+        self.module_file = module_file
 
         # Check if we need to run the tests on a separate thread
-        if "async" in line_contents:
-            line_contents.remove("async")
+        if is_async:
             self.threaded = True
             self.test_queue = Queue()
 
-        with self.traceback_handling(debug):
-            # Get the module containing the test(s)
-            if (
-                module_name := get_module_name(
-                    " ".join(line_contents), self.shell.user_global_ns
-                )
-            ) is None:
-                raise TestModuleNotFoundError
-
-            self.module_name = module_name
-
+        with self.traceback_handling(is_debug):
             # Check that the test module file exists
-            if not (
-                module_file := pathlib.Path(
-                    f"tutorial/tests/test_{self.module_name}.py"
-                )
-            ).exists():
-                raise FileNotFoundError(module_file)
-
-            self.module_file = module_file
+            if not (self.module_file and self.module_file.exists()):
+                raise FileNotFoundError(self.module_file)
 
             # Run the cell
             results = self.run_cell()
 
             # If in debug mode, display debug information first
-            if debug:
+            if is_debug:
                 debug_output = DebugOutput(
                     module_name=self.module_name,
                     module_file=self.module_file,
@@ -294,6 +335,7 @@ class TestMagic(Magics):
 
             # Parse the AST of the test module to retrieve the solution code
             ast_parser = AstParser(self.module_file)
+
             # Display the test results and the solution code
             for result in results:
                 solution = (
@@ -310,7 +352,7 @@ class TestMagic(Magics):
 
 def load_ipython_extension(ipython):
     """
-    Any module file that define a function named `load_ipython_extension`
+    Any module file that defines a function named `load_ipython_extension`
     can be loaded via `%load_ext module.path` or be configured to be
     autoloaded by IPython at startup time.
     """
