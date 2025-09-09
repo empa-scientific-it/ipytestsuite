@@ -112,23 +112,6 @@ def run_pytest_in_background(
     test_queue.put(run_pytest_for_function(module_file, function))
 
 
-def get_module_name(line: str, globals_dict: dict) -> str:
-    """Fetch the test module name"""
-    # Manual override from %%ipytest line
-    if line.strip():
-        filename = line.strip().removesuffix(".py")
-    else:
-        # By default, look for the variable __NOTEBOOK_FILE__
-        notebook_file = globals_dict.get("__NOTEBOOK_FILE__")
-
-        if notebook_file is None:
-            raise NotebookContextMissingError
-
-        filename = str(notebook_file).removesuffix(".ipynb")
-
-    return pathlib.Path(filename).stem
-
-
 @magics_class
 class TestMagic(Magics):
     """Class to add the test cell magic"""
