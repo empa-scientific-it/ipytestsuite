@@ -11,22 +11,44 @@ from collections import defaultdict
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from queue import Queue
 from threading import Thread
+from typing import TYPE_CHECKING
 
 import pytest
-from dotenv import find_dotenv, load_dotenv
 from IPython.core.interactiveshell import InteractiveShell
 from IPython.core.magic import Magics, cell_magic, magics_class
 from IPython.display import HTML, display
 
-from .ai_helpers import OpenAIWrapper
 from .ast_parser import AstParser
 from .exceptions import (
     FunctionNotFoundError,
     InstanceNotFoundError,
     NotebookContextMissingError,
-    OpenAIWrapperError,
     PytestInternalError,
 )
+
+# Import AI dependencies for type checking
+if TYPE_CHECKING:
+    from .ai_helpers import OpenAIWrapper
+    from .exceptions import OpenAIWrapperError
+
+# Try to import AI-related dependencies at runtime
+try:
+    from dotenv import find_dotenv, load_dotenv
+
+    from .ai_helpers import OpenAIWrapper
+    from .exceptions import OpenAIWrapperError
+
+    HAS_AI_SUPPORT = True
+except ImportError:
+    HAS_AI_SUPPORT = False
+
+    # Dummy functions to prevent NameError
+    def find_dotenv(*args, **kwargs): ...
+
+    def load_dotenv(*args, **kwargs): ...
+
+    OpenAIWrapper = None  # type: ignore
+    OpenAIWrapperError = Exception  # type: ignore
 from .helpers import (
     AFunction,
     DebugOutput,
@@ -339,62 +361,91 @@ def load_ipython_extension(ipython):
     can be loaded via `%load_ext module.path` or be configured to be
     autoloaded by IPython at startup time.
     """
-    # Configure the API key for the OpenAI client
-    openai_env = find_dotenv("openai.env")
-    if openai_env:
-        load_dotenv(openai_env)
+    # Initialize OpenAI client based on AI support availability
+    if HAS_AI_SUPPORT:
+        # Configure the API key for the OpenAI client
+        openai_env = find_dotenv("openai.env")
+        if openai_env:
+            load_dotenv(openai_env)
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    model = os.getenv("OPENAI_MODEL")
-    language = os.getenv("OPENAI_LANGUAGE")
+        api_key = os.getenv("OPENAI_API_KEY")
+        model = os.getenv("OPENAI_MODEL")
+        language = os.getenv("OPENAI_LANGUAGE")
 
-    # First, validate the key
-    key_validation = OpenAIWrapper.validate_api_key(api_key)
-    if not key_validation.is_valid:
-        message = key_validation.user_message
-        message_color = "#ffebee"  # Red
-        ipython.openai_client = None
-    else:
-        assert api_key is not None  # must be so at this point
-        try:
-            openai_client, model_validation = OpenAIWrapper.create_validated(
-                api_key, model, language
-            )
-
-            if model_validation.is_valid:
-                ipython.openai_client = openai_client
-                message_color = "#d9ead3"  # Green
-            else:
+        # First, validate the key
+        if OpenAIWrapper is not None:  # Type guard
+            key_validation = OpenAIWrapper.validate_api_key(api_key)
+            if not key_validation.is_valid:
+                message = key_validation.user_message
                 message_color = "#ffebee"  # Red
                 ipython.openai_client = None
+            else:
+                assert api_key is not None  # must be so at this point
+                try:
+                    openai_client, model_validation = OpenAIWrapper.create_validated(
+                        api_key, model, language
+                    )
 
-            message = model_validation.user_message
-        except OpenAIWrapperError as e:
+                    if model_validation.is_valid:
+                        ipython.openai_client = openai_client
+                        message_color = "#d9ead3"  # Green
+                    else:
+                        message_color = "#ffebee"  # Red
+                        ipython.openai_client = None
+
+                    message = model_validation.user_message
+                except OpenAIWrapperError as e:
+                    ipython.openai_client = None
+                    message = f"🚫 <strong style='color: red;'>OpenAI configuration error:</strong><br>{str(e)}"
+                    message_color = "#ffebee"
+                except Exception as e:
+                    # Handle any other unexpected errors
+                    ipython.openai_client = None
+                    message = f"🚫 <strong style='color: red;'>Unexpected error:</strong><br>{str(e)}"
+                    message_color = "#ffebee"
+        else:
+            # This should not happen if HAS_AI_SUPPORT is True, but safety first
             ipython.openai_client = None
-            message = f"🚫 <strong style='color: red;'>OpenAI configuration error:</strong><br>{str(e)}"
+            message = "🚫 <strong style='color: red;'>AI support initialization failed</strong>"
             message_color = "#ffebee"
-        except Exception as e:
-            # Handle any other unexpected errors
-            ipython.openai_client = None
-            message = (
-                f"🚫 <strong style='color: red;'>Unexpected error:</strong><br>{str(e)}"
+
+        display(
+            HTML(
+                "<div style='background-color: "
+                f"{message_color}; border-radius: 5px; padding: 10px;'>"
+                f"{message}"
+                "</div>"
             )
-            message_color = "#ffebee"
-
-    display(
-        HTML(
-            "<div style='background-color: "
-            f"{message_color}; border-radius: 5px; padding: 10px;'>"
-            f"{message}"
-            "</div>"
         )
-    )
+    else:
+        # AI support not available
+        ipython.openai_client = None
+        message = (
+            "ℹ️ <strong>AI features disabled:</strong> Install with "
+            "<code>pip install ipytestsuite[ai]</code> to enable AI-powered explanations."
+        )
+        message_color = "#e3f2fd"  # Light blue
+        display(
+            HTML(
+                "<div style='background-color: "
+                f"{message_color}; border-radius: 5px; padding: 10px;'>"
+                f"{message}"
+                "</div>"
+            )
+        )
 
     # Register the magic
     ipython.register_magics(TestMagic)
 
+    ai_status = (
+        "with AI support"
+        if HAS_AI_SUPPORT
+        and hasattr(ipython, "openai_client")
+        and ipython.openai_client
+        else "core features only"
+    )
     message = (
         "<div style='background-color: #fffde7; border-radius: 5px; padding: 10px;'>"
-        "🔄 <strong>IPytest extension (re)loaded.</strong></div>"
+        f"🔄 <strong>IPytest extension (re)loaded</strong> ({ai_status}).</div>"
     )
     display(HTML(message))

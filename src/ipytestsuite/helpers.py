@@ -5,7 +5,10 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from types import TracebackType
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
+
+if TYPE_CHECKING:
+    from .ai_helpers import OpenAIWrapper
 
 import ipywidgets
 import pytest
@@ -13,7 +16,18 @@ from IPython.display import Code
 from IPython.display import display as ipython_display
 from ipywidgets import HTML
 
-from .ai_helpers import AIExplanation, OpenAIWrapper
+# Try to import AI-related classes
+if TYPE_CHECKING:
+    from .ai_helpers import AIExplanation, OpenAIWrapper
+else:
+    try:
+        from .ai_helpers import AIExplanation, OpenAIWrapper
+
+        HAS_AI_SUPPORT = True
+    except ImportError:
+        HAS_AI_SUPPORT = False
+        AIExplanation = None
+        OpenAIWrapper = None
 
 
 def strip_ansi_codes(text: str) -> str:
@@ -381,7 +395,7 @@ class TestResultOutput:
     ipytest_result: IPytestResult
     solution: str | None = None
     MAX_ATTEMPTS: ClassVar[int] = 3
-    openai_client: OpenAIWrapper | None = None
+    openai_client: "OpenAIWrapper | None" = None
 
     def display_results(self) -> None:
         """Display the test results in an output widget as a VBox"""
