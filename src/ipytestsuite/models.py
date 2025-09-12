@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 
 class TestOutcome(Enum):
+    __test__ = False  # Tell pytest to ignore this class
     PASS = 1
     FAIL = 2
     TEST_ERROR = 3
