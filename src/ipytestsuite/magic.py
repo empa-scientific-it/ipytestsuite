@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 # Try to import AI-related dependencies at runtime
 try:
-    from dotenv import find_dotenv, load_dotenv
+    from dotenv import find_dotenv, load_dotenv  # type: ignore
 
     from .ai_helpers import OpenAIWrapper
     from .exceptions import OpenAIWrapperError
@@ -44,21 +44,15 @@ except ImportError:
 
     # Dummy functions to prevent NameError
     def find_dotenv(*args, **kwargs): ...
-
     def load_dotenv(*args, **kwargs): ...
 
     OpenAIWrapper = None  # type: ignore
     OpenAIWrapperError = Exception  # type: ignore
-from .helpers import (
-    AFunction,
-    DebugOutput,
-    FunctionInjectionPlugin,
-    IPytestOutcome,
-    IPytestResult,
-    ResultCollector,
-    TestOutcome,
-    TestResultOutput,
-)
+
+
+from .models import AFunction, IPytestOutcome, IPytestResult, TestOutcome
+from .output_formatting import DebugOutput, TestResultOutput
+from .pytest_integration import FunctionInjectionPlugin, ResultCollector
 
 
 def run_pytest_for_function(

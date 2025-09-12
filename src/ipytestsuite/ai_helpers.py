@@ -31,7 +31,7 @@ from .exceptions import (
 )
 
 if t.TYPE_CHECKING:
-    from .helpers import IPytestResult
+    from .models import IPytestResult
 
 # Set logger
 logger = logging.getLogger()
