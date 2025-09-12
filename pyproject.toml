@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Interactive testing suite for Jupyter notebooks with AI-powered explanations"
 readme = "README.md"
 requires-python = ">=3.12"
-authors = [{ name = "Edoardo Baldi", email = "edoardob90@gmail.com" }]
+authors = [
+  { name = "Edoardo Baldi", email = "edoardo.baldi@empa.ch" },
+  { name = "Simone Baffelli", email = "simone.baffelli@empa.ch" },
+]
 dependencies = [
   "ipython>=9.5.0",
   "ipywidgets>=8.1.7",
