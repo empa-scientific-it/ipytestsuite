@@ -5,7 +5,7 @@ in Jupyter notebooks, with rich HTML output and optional AI-powered error explan
 
 Usage:
     %load_ext ipytestsuite
-    
+
     %%ipytest
     def solution_my_function(x):
         return x + 1
