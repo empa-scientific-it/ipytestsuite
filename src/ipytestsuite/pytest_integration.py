@@ -3,7 +3,7 @@ from collections.abc import Callable
 import pytest
 
 from .models import TestOutcome
-from .test_results import TestCaseResult
+from .results import TestCaseResult
 
 
 @pytest.fixture

@@ -4,7 +4,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .test_results import TestCaseResult
+    from .results import TestCaseResult
 
 
 class TestOutcome(Enum):

@@ -3,11 +3,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import ipywidgets
-from IPython.display import Code, display as ipython_display
+from IPython.display import Code
+from IPython.display import display as ipython_display
 from ipywidgets import HTML
 
 from .models import IPytestOutcome, IPytestResult, TestOutcome
-from .test_results import TestCaseResult
+from .results import TestCaseResult
 
 if TYPE_CHECKING:
     from .ai_helpers import AIExplanation, OpenAIWrapper
@@ -19,8 +20,6 @@ try:
     HAS_AI_SUPPORT = True
 except ImportError:
     HAS_AI_SUPPORT = False
-    AIExplanation = None
-    OpenAIWrapper = None
 
 
 @dataclass
@@ -122,7 +121,7 @@ class TestResultOutput:
     ipytest_result: IPytestResult
     solution: str | None = None
     MAX_ATTEMPTS: ClassVar[int] = 3
-    openai_client: "OpenAIWrapper | None" = None
+    openai_client: OpenAIWrapper | None = None
 
     def display_results(self) -> None:
         """Display the test results in an output widget as a VBox"""
@@ -260,7 +259,7 @@ class TestResultOutput:
 
                 output_cell.append_display_data(HTML(error_result.to_html()))
 
-                if self.openai_client and HAS_AI_SUPPORT and AIExplanation:
+                if HAS_AI_SUPPORT and self.openai_client:
                     ai_explains = AIExplanation(
                         ipytest_result=self.ipytest_result,
                         exception=exception,
@@ -301,12 +300,7 @@ class TestResultOutput:
                     if test.outcome != TestOutcome.PASS
                 ]
 
-                if (
-                    self.openai_client
-                    and failed_tests
-                    and HAS_AI_SUPPORT
-                    and AIExplanation
-                ):
+                if HAS_AI_SUPPORT and self.openai_client and failed_tests:
                     ai_explains = AIExplanation(
                         ipytest_result=self.ipytest_result,
                         exception=failed_tests[0].exception,
