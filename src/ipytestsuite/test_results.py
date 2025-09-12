@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from types import TracebackType
 
 from .models import TestOutcome
-from .utilities import strip_ansi_codes
+from .utils import strip_ansi_codes
 
 
 @dataclass
