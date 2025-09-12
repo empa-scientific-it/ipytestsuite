@@ -530,7 +530,7 @@ class AIExplanation:
 
     def _fetch_explanation(self) -> None:
         """Fetch the explanation from OpenAI API"""
-        from .helpers import IPytestOutcome
+        from .models import IPytestOutcome
 
         logger.debug("Attempting to fetch explanation from OpenAI API.")
 
